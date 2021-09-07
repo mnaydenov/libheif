@@ -1504,7 +1504,9 @@ Error HeifContext::decode_full_grid_image(heif_item_id ID,
         return err;
       }
       if (options && options->on_progress) {
-        options->on_progress(heif_progress_step_load_tile, reference_idx + 1, options->progress_user_data);
+        if(! options->on_progress(heif_progress_step_load_tile, reference_idx + 1, options->progress_user_data)) {
+          return Error::Ok;
+        }
       }
 #endif
 

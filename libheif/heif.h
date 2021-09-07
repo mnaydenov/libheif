@@ -911,9 +911,9 @@ struct heif_decoding_options
   // Default: false (do not ignore).
   uint8_t ignore_transformations;
 
-  void (* start_progress)(enum heif_progress_step step, int max_progress, void* progress_user_data);
+  bool (* start_progress)(enum heif_progress_step step, int max_progress, void* progress_user_data);
 
-  void (* on_progress)(enum heif_progress_step step, int progress, void* progress_user_data);
+  bool (* on_progress)(enum heif_progress_step step, int progress, void* progress_user_data);
 
   void (* end_progress)(enum heif_progress_step step, void* progress_user_data);
 
