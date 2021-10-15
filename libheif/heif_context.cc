@@ -1461,6 +1461,9 @@ Error HeifContext::decode_full_grid_image(heif_item_id ID,
   int reference_idx = 0;
 
 #if ENABLE_PARALLEL_TILE_DECODING
+  // prevent allocating just 1 thread and do the work here instead
+  const auto areThreadsNeeded = grid.get_rows() * grid.get_columns() > 1 && m_max_decoding_threads > 1;
+
   // remember which tile to put where into the image
   struct tile_data {
     heif_item_id tileID;
@@ -1468,7 +1471,9 @@ Error HeifContext::decode_full_grid_image(heif_item_id ID,
   };
 
   std::deque<tile_data> tiles;
-  tiles.resize(grid.get_rows() * grid.get_columns() );
+  if(areThreadsNeeded) {
+    tiles.resize(grid.get_rows() * grid.get_columns() );
+  }
 
   std::deque<std::future<Error> > errs;
 #endif
@@ -1498,18 +1503,21 @@ Error HeifContext::decode_full_grid_image(heif_item_id ID,
       int src_height = tileImg->get_height();
 
 #if ENABLE_PARALLEL_TILE_DECODING
-      tiles[x+y*grid.get_columns()] = tile_data { tileID, x0,y0 };
-#else
-      Error err = decode_and_paste_tile_image(tileID, img, x0, y0);
-      if (err) {
-        return err;
-      }
-      if (options && options->on_progress) {
-        if(! options->on_progress(heif_progress_step_load_tile, reference_idx + 1, options->progress_user_data)) {
-          return Error::Ok;
+      if(areThreadsNeeded) {
+        tiles[x+y*grid.get_columns()] = tile_data { tileID, x0,y0 };
+      } else
+#endif
+      {
+        Error err = decode_and_paste_tile_image(tileID, img, x0, y0);
+        if (err) {
+          return err;
+        }
+        if (options && options->on_progress) {
+          if(! options->on_progress(heif_progress_step_load_tile, reference_idx + 1, options->progress_user_data)) {
+            return Error::Ok;
+          }
         }
       }
-#endif
 
       x0 += src_width;
       tile_height = src_height; // TODO: check that all tiles have the same height
